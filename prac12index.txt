@@ -1,0 +1,158 @@
+#include <iostream>
+#include <fstream>
+#include <iomanip>
+#include <vector>
+using namespace std;
+
+struct IndexEntry {
+    string rollNo;
+    streampos pos;
+};
+
+vector<IndexEntry> indexTable;
+
+void loadIndex() {
+    indexTable.clear();
+    ifstream indexFile("index.txt");
+    IndexEntry entry;
+    while (indexFile >> entry.rollNo >> entry.pos) {
+        indexTable.push_back(entry);
+    }
+    indexFile.close();
+}
+
+void saveIndex() {
+    ofstream indexFile("index.txt", ios::out);
+    for (auto &entry : indexTable) {
+        indexFile << entry.rollNo << " " << entry.pos << endl;
+    }
+    indexFile.close();
+}
+
+void addStudent() {
+    ofstream dataFile("db.txt", ios::app);
+    string rn, name, div, addr;
+    cout << "Enter Student Roll No.: ";
+    cin >> rn;
+    cout << "Enter Student Name: ";
+    cin >> name;
+    cout << "Enter Student Division: ";
+    cin >> div;
+    cout << "Enter Student Address: ";
+    cin >> addr;
+
+    // Save current position before writing
+    streampos pos = dataFile.tellp();
+    dataFile << left << setw(20) << rn << setw(20) << name << setw(20) << div << setw(20) << addr << endl;
+
+    // Update index
+    IndexEntry newEntry = {rn, pos};
+    indexTable.push_back(newEntry);
+    saveIndex();
+
+    dataFile.close();
+    cout << "Student Added Successfully.\n";
+}
+
+void deleteStudent() {
+    string rn;
+    cout << "Enter Student Roll No. to Delete: ";
+    cin >> rn;
+
+    // Search in index table
+    bool found = false;
+    for (auto it = indexTable.begin(); it != indexTable.end(); ++it) {
+        if (it->rollNo == rn) {
+            indexTable.erase(it);
+            found = true;
+            break;
+        }
+    }
+
+    if (found) {
+        saveIndex();
+        cout << "Student Deleted Successfully (Logically).\n";
+    } else {
+        cout << "Student Not Found!\n";
+    }
+}
+
+void searchStudent() {
+    string rn;
+    cout << "Enter Student Roll No. to Search: ";
+    cin >> rn;
+
+    bool found = false;
+    streampos pos;
+    for (auto &entry : indexTable) {
+        if (entry.rollNo == rn) {
+            found = true;
+            pos = entry.pos;
+            break;
+        }
+    }
+
+    if (found) {
+        ifstream dataFile("db.txt");
+        dataFile.seekg(pos);
+        string line;
+        getline(dataFile, line);
+        cout << "Student Details:\n" << line << endl;
+        dataFile.close();
+    } else {
+        cout << "Student Doesn't Exist!\n";
+    }
+}
+
+void printStudents() {
+    ifstream dataFile("db.txt");
+    string line;
+    cout << "\nPrinting All Students:\n";
+    while (getline(dataFile, line)) {
+        cout << line << endl;
+    }
+    dataFile.close();
+}
+
+int main() {
+    // Initialize the db.txt and index.txt if not present
+    ofstream dataFile("db.txt", ios::app);
+    dataFile.close();
+    ofstream indexFile("index.txt", ios::app);
+    indexFile.close();
+
+    // Load index into memory
+    loadIndex();
+
+    int choice;
+    while (true) {
+        cout << "\nEnter your choice:\n";
+        cout << "1. Add Student\n";
+        cout << "2. Delete Student\n";
+        cout << "3. Search Student\n";
+        cout << "4. Print All Students\n";
+        cout << "5. Exit\n";
+        cout << "---> ";
+        cin >> choice;
+
+        switch (choice) {
+            case 1:
+                addStudent();
+                break;
+            case 2:
+                deleteStudent();
+                break;
+            case 3:
+                searchStudent();
+                break;
+            case 4:
+                printStudents();
+                break;
+            case 5:
+                cout << "Exiting program.\n";
+                return 0;
+            default:
+                cout << "Invalid choice. Please try again.\n";
+        }
+    }
+}
